@@ -1,18 +1,21 @@
 var express = require('express');
 var router = express.Router();
 var db = require('../db')
+var mysql = require('mysql')
 var con = db.connection(mysql);
-var selectUserquery = 'select users.fullname,  users.Latitude, users.Longitudefrom users inner join address on users.usersId=address.usersId where address.Kelurahan = ? && address.RW = ?'
+
+var selectUserquery = 'select users.fullname,  users.Latitude, users.Longitude from users inner join address on users.usersId=address.usersId where address.Kelurahan = ? && address.RW = ?'
 
 router.route('/astardirection')
   .get(function (req, res, next) {
     var Kelurahan = req.query.Kel,
       RW = req.query.RW,
-      lat = req.query.Lat,
+      lat = req.query.lat,
       lng = req.query.lng,
       ArrayDirection = []
 
     selectdb(con, ArrayDirection, lat, lng, RW, Kelurahan, function (err, ArrayDirection) {
+
       ArrayDirection.sort(function (a, b) {
         return (a.Jarak - b.Jarak);
         // if jarak a < jarak b then sort it out.
@@ -20,15 +23,15 @@ router.route('/astardirection')
 
       var destLat = ArrayDirection[0].Latitude;
       var destLong = ArrayDirection[0].Longitude;
-
-      res.render('maps', {
+      console.log(ArrayDirection[0])
+      var ArrayNearest = ArrayDirection[0]
+      res.json({
         title: 'Transaksi Terdekat - Mulung Co',
         ArrayNearest: ArrayNearest,
         lat: lat,
         lng: lng,
         destLat: destLat,
-        destLong: destLong,
-        adminId: adminId
+        destLong: destLong
       });
     })
   })
@@ -39,24 +42,22 @@ function selectdb(con, ArrayDirection, lat, lng, RW, Kelurahan, callback) {
       console.log(err)
       callback(err, null)
     } else {
-      console.log(rows)
       for (var i = 0; i < rows.length; i++) {
-        if (rows[i].NextTransaction === 'PickUp') {
-          ArrayRows.push(rows[i]);
-          if (rows[i].Latitude != '' && rows[i].Longitude != '' && rows[i].Longitude != null && rows[i].Latitude != null) {
-            var Jarak = gdistance(lat, long, rows[i].Latitude, rows[i].Longitude)
-            Jarak = Jarak.toFixed(3)
-            var Nama = rows[i].fullname;
-            var latitude = rows[i].Latitude;
-            var longitude = rows[i].Longitude;
 
-            ArrayDirection.push({
-              'Nama': Nama,
-              'Latitude': latitude,
-              'Longitude': longitude,
-              'Jarak': Jarak
-            })
-          }
+        if (rows[i].Latitude != '' && rows[i].Longitude != '' && rows[i].Longitude != null && rows[i].Latitude != null) {
+          var Jarak = gdistance(lat, lng, rows[i].Latitude, rows[i].Longitude)
+          Jarak = Jarak.toFixed(3)
+          var Nama = rows[i].fullname;
+          var latitude = rows[i].Latitude;
+          var longitude = rows[i].Longitude;
+
+          ArrayDirection.push({
+            'Nama': Nama,
+            'Latitude': latitude,
+            'Longitude': longitude,
+            'Jarak': Jarak
+          })
+
         }
       }
     }
